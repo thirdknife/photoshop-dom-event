@@ -15,34 +15,35 @@
 
 
 ;(function(window) {
-	
+
 	'use strict';
-	
+
 	var Q   = require('q'),
-		pkg = require('./package.json');
-	
-    /*
-     * Module constructor
+		pkg = require('./package.json'),
+		CS = require('CEP/CSInterface');
+
+	/*
+	 * Module constructor
 	 * @constructor
-     */	
+	 */
 	function PhotoshopDOMEvent() {
 		this._init();
 	}
-	
+
 	// Private
 	PhotoshopDOMEvent.prototype._init = function() {
 		var self = this;
-		
-		if(window.CSInterface === undefined || typeof window.CSInterface !== 'function') {
+
+		if(CS.CSInterface === undefined || typeof CS.CSInterface !== 'function') {
 			throw new Error('Include Adobe CSInterface v5.x library to your Adobe Photoshop extension.');
 		} else {
-			this._csInterface     = new window.CSInterface();
-    		this._extensionId     = this._csInterface.getExtensionID();
+			this._csInterface     = new CS.CSInterface();
+			this._extensionId     = this._csInterface.getExtensionID();
 			this._registredEvents = [];
 			this._hostVersion     = this._getHostVersion();
 			this.globalEventType  = this._hostVersion == 15 ? 'PhotoshopCallback' : 'com.adobe.PhotoshopJSONCallback' + self._extensionId;
 			this._now             = new Date(Date.now());
-			
+
 			// Global event listener for PhotoshopJSONCallback event
 			this._csInterface.addEventListener(this.globalEventType, function(csEvent) {
 				var eventFiredDate;
@@ -54,21 +55,21 @@
 					if(self._now.toString() !== eventFiredDate.toString()) {
 						self._now = eventFiredDate;
 						self._callbackManager(csEvent);
-					}	
+					}
 				} else {
 					self._callbackManager(csEvent);
 				}
 			});
 		}
 	};
-	
+
 	// Public
 	PhotoshopDOMEvent.prototype.version = pkg.version;
-			
+
 	// Public
 	PhotoshopDOMEvent.prototype.onEvent = function(eventID, callback) {
 		var self = this;
-		
+
 		this._eventRegistrator('register', eventID, callback)
 			.then(function(typeID) {
 				if(typeID) {
@@ -81,7 +82,7 @@
 				throw new Error("Can't register listener for the provided eventID: " + eventID);
 			});
 	};
-	
+
 	// Public
 	PhotoshopDOMEvent.prototype.stopListeningEvent = function(eventID) {
 		return this._eventRegistrator('unregister', eventID, undefined)
@@ -91,16 +92,16 @@
 			.catch(function(eventID) {
 				throw new Error("Can't unregister listener for the provided eventID: " + eventID);
 			});
-	};		
-	
+	};
+
 	// Helpers
-	
+
 	PhotoshopDOMEvent.prototype._eventRegistrator = function(status, eventID, callback) {
 		var self = this;
 		var deferred = Q.defer();
 		var type = status == 'register' ? 'com.adobe.PhotoshopRegisterEvent' : 'com.adobe.PhotoshopUnRegisterEvent';
-		var event = new window.CSEvent(type, 'APPLICATION');
-		
+		var event = new CS.CSEvent(type, 'APPLICATION');
+
 		this._getTypeID(eventID)
 			.then(function(typeID) {
 				try {
@@ -110,14 +111,14 @@
 				} catch(err) {
 					deferred.reject(eventID);
 				}
-				
+
 				// Adding current event to the array of registered events
 				if(status == 'register') {
 					self._registredEvents.push({ eventID : eventID, typeID : typeID, callback : callback });
 					deferred.resolve(typeID);
 				} else if(status == 'unregister') {
 					var eventsCount = self._registredEvents.length;
-					
+
 					for(var unRegistredEvent in self._registredEvents) {
 						if(self._registredEvents[unRegistredEvent].eventID == eventID) {
 							self._registredEvents.splice(unRegistredEvent, 1);
@@ -134,13 +135,13 @@
 			.catch(function(err) {
 				deferred.reject(err);
 			});
-		
+
 		return deferred.promise;
 	};
-	
+
 	PhotoshopDOMEvent.prototype._callbackManager = function(rawCSEventData) {
 		var self = this;
-		
+
 		this._cleanRetrievedData(rawCSEventData)
 			.then(function(data) {
 				for(var registredEvent in self._registredEvents) {
@@ -153,19 +154,19 @@
 				throw new Error('Callback manager: ' + err);
 			})
 	};
-	
-    PhotoshopDOMEvent.prototype._getHostVersion = function() {
-        // Adobe Photoshop CC2014   -> 15.x.x  (15)
-        // Adobe Photoshop CC2015   -> 16.x.x  (16)
-        // Adobe Photoshop CC2015.5 -> 17.x.x  (17)
-        
-        return Number(this._csInterface.getHostEnvironment().appVersion.split('.')[0]);
-    };	
-	
+
+	PhotoshopDOMEvent.prototype._getHostVersion = function() {
+		// Adobe Photoshop CC2014   -> 15.x.x  (15)
+		// Adobe Photoshop CC2015   -> 16.x.x  (16)
+		// Adobe Photoshop CC2015.5 -> 17.x.x  (17)
+
+		return Number(this._csInterface.getHostEnvironment().appVersion.split('.')[0]);
+	};
+
 	PhotoshopDOMEvent.prototype._getTypeID = function(eventId) {
 		var self = this;
-        var deferred = Q.defer();
-		
+		var deferred = Q.defer();
+
 		this._csInterface.evalScript('app.charIDToTypeID("' + eventId + '");', function(typeID) {
 			if(typeID.toString() === 'EvalScript error.') {
 				self._csInterface.evalScript('app.stringIDToTypeID("' + eventId + '");', function(typeID) {
@@ -175,15 +176,15 @@
 				deferred.resolve(typeID);
 			}
 		});
-		
-        return deferred.promise;		
+
+		return deferred.promise;
 	};
-	
+
 	PhotoshopDOMEvent.prototype._cleanRetrievedData = function(rawCSEventData) {
 		var self = this;
-        var deferred = Q.defer();
+		var deferred = Q.defer();
 		var dataToSend = {};
-		
+
 		// Adobe Photoshop CC2014
 		if(this._getHostVersion() === 15) {
 			dataToSend.extensionId = self._extensionId;
@@ -192,10 +193,10 @@
 			dataToSend.type        = rawCSEventData.type;
 			dataToSend.scope       = rawCSEventData.scope
 			dataToSend.eventData   = {};
-			
+
 			deferred.resolve(dataToSend);
-			
-		// Adobe Photoshop CC2015 && // Adobe Photoshop CC2015.5
+
+			// Adobe Photoshop CC2015 && // Adobe Photoshop CC2015.5
 		} else {
 			if(typeof rawCSEventData.data === 'string') {
 				dataToSend.extensionId = self._extensionId;
@@ -204,16 +205,16 @@
 				dataToSend.appId       = rawCSEventData.appId;
 				dataToSend.type        = rawCSEventData.type;
 				dataToSend.scope       = rawCSEventData.scope
-				
+
 				deferred.resolve(dataToSend);
 			} else {
 				deferred.reject('Unknown data type retrieved from the CS Event. Expected a string for csEvent.data');
 			}
 		}
-		
+
 		return deferred.promise;
 	};
-	
+
 	module.exports = new PhotoshopDOMEvent;
-	
+
 })(window);
