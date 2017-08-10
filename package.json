@@ -37,6 +37,7 @@
   },
   "homepage": "https://github.com/antonio-gomez/photoshop-dom-event#readme",
   "dependencies": {
+    "json-loader": "^0.5.7",
     "q": "^1.4.1"
   }
 }
