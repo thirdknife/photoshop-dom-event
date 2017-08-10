@@ -13,19 +13,18 @@
  *
  */
 
-
 ;(function(window) {
 
 	'use strict';
 
 	var Q   = require('q'),
-		pkg = require('./package.json'),
-		CS = require('CEP/CSInterface');
+		CEP = require('../../CEP/CSInterface'),
+		pkg = require('./package.json');
 
-	/*
-	 * Module constructor
+    /*
+     * Module constructor
 	 * @constructor
-	 */
+     */
 	function PhotoshopDOMEvent() {
 		this._init();
 	}
@@ -34,33 +33,29 @@
 	PhotoshopDOMEvent.prototype._init = function() {
 		var self = this;
 
-		if(CS.CSInterface === undefined || typeof CS.CSInterface !== 'function') {
-			throw new Error('Include Adobe CSInterface v5.x library to your Adobe Photoshop extension.');
-		} else {
-			this._csInterface     = new CS.CSInterface();
-			this._extensionId     = this._csInterface.getExtensionID();
-			this._registredEvents = [];
-			this._hostVersion     = this._getHostVersion();
-			this.globalEventType  = this._hostVersion == 15 ? 'PhotoshopCallback' : 'com.adobe.PhotoshopJSONCallback' + self._extensionId;
-			this._now             = new Date(Date.now());
+        this._csInterface     = new CEP.CSInterface();
+        this._extensionId     = this._csInterface.getExtensionID();
+        this._registredEvents = [];
+        this._hostVersion     = this._getHostVersion();
+        this.globalEventType  = this._hostVersion == 15 ? 'PhotoshopCallback' : 'com.adobe.PhotoshopJSONCallback' + self._extensionId;
+        this._now             = new Date(Date.now());
 
-			// Global event listener for PhotoshopJSONCallback event
-			this._csInterface.addEventListener(this.globalEventType, function(csEvent) {
-				var eventFiredDate;
+        // Global event listener for PhotoshopJSONCallback event
+        this._csInterface.addEventListener(this.globalEventType, function(csEvent) {
+            var eventFiredDate;
 
-				// Avoid multiple event call stack error on Adobe Photoshop CC2014
-				if(self._hostVersion == 15) {
-					eventFiredDate = new Date(Date.now());
+            // Avoid multiple event call stack error on Adobe Photoshop CC2014
+            if(self._hostVersion == 15) {
+                eventFiredDate = new Date(Date.now());
 
-					if(self._now.toString() !== eventFiredDate.toString()) {
-						self._now = eventFiredDate;
-						self._callbackManager(csEvent);
-					}
-				} else {
-					self._callbackManager(csEvent);
-				}
-			});
-		}
+                if(self._now.toString() !== eventFiredDate.toString()) {
+                    self._now = eventFiredDate;
+                    self._callbackManager(csEvent);
+                }
+            } else {
+                self._callbackManager(csEvent);
+            }
+        });
 	};
 
 	// Public
@@ -100,7 +95,7 @@
 		var self = this;
 		var deferred = Q.defer();
 		var type = status == 'register' ? 'com.adobe.PhotoshopRegisterEvent' : 'com.adobe.PhotoshopUnRegisterEvent';
-		var event = new CS.CSEvent(type, 'APPLICATION');
+		var event = new CEP.CSEvent(type, 'APPLICATION');
 
 		this._getTypeID(eventID)
 			.then(function(typeID) {
@@ -155,17 +150,17 @@
 			})
 	};
 
-	PhotoshopDOMEvent.prototype._getHostVersion = function() {
-		// Adobe Photoshop CC2014   -> 15.x.x  (15)
-		// Adobe Photoshop CC2015   -> 16.x.x  (16)
-		// Adobe Photoshop CC2015.5 -> 17.x.x  (17)
+    PhotoshopDOMEvent.prototype._getHostVersion = function() {
+        // Adobe Photoshop CC2014   -> 15.x.x  (15)
+        // Adobe Photoshop CC2015   -> 16.x.x  (16)
+        // Adobe Photoshop CC2015.5 -> 17.x.x  (17)
 
-		return Number(this._csInterface.getHostEnvironment().appVersion.split('.')[0]);
-	};
+        return Number(this._csInterface.getHostEnvironment().appVersion.split('.')[0]);
+    };
 
 	PhotoshopDOMEvent.prototype._getTypeID = function(eventId) {
 		var self = this;
-		var deferred = Q.defer();
+        var deferred = Q.defer();
 
 		this._csInterface.evalScript('app.charIDToTypeID("' + eventId + '");', function(typeID) {
 			if(typeID.toString() === 'EvalScript error.') {
@@ -177,12 +172,12 @@
 			}
 		});
 
-		return deferred.promise;
+        return deferred.promise;
 	};
 
 	PhotoshopDOMEvent.prototype._cleanRetrievedData = function(rawCSEventData) {
 		var self = this;
-		var deferred = Q.defer();
+        var deferred = Q.defer();
 		var dataToSend = {};
 
 		// Adobe Photoshop CC2014
@@ -196,7 +191,7 @@
 
 			deferred.resolve(dataToSend);
 
-			// Adobe Photoshop CC2015 && // Adobe Photoshop CC2015.5
+		// Adobe Photoshop CC2015 && // Adobe Photoshop CC2015.5
 		} else {
 			if(typeof rawCSEventData.data === 'string') {
 				dataToSend.extensionId = self._extensionId;
