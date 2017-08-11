@@ -34,34 +34,30 @@
 	PhotoshopDOMEvent.prototype._init = function() {
 		var self = this;
 
-		if(CS.CSInterface === undefined || typeof CS.CSInterface !== 'function') {
-			throw new Error('Include Adobe CSInterface v5.x library to your Adobe Photoshop extension.');
-		} else {
-			this._csInterface     = new CS.CSInterface();
-			this._extensionId     = this._csInterface.getExtensionID();
-			this._registredEvents = [];
-			this._hostVersion     = this._getHostVersion();
-			this.globalEventType  = this._hostVersion == 15 ? 'PhotoshopCallback' : 'com.adobe.PhotoshopJSONCallback' + self._extensionId;
-			this._now             = new Date(Date.now());
+        this._csInterface     = CS.CSInterface;
+        this._extensionId     = this._csInterface.getExtensionID();
+        this._registredEvents = [];
+        this._hostVersion     = this._getHostVersion();
+        this.globalEventType  = this._hostVersion == 15 ? 'PhotoshopCallback' : 'com.adobe.PhotoshopJSONCallback' + self._extensionId;
+        this._now             = new Date(Date.now());
 
-			// Global event listener for PhotoshopJSONCallback event
-			this._csInterface.addEventListener(this.globalEventType, function(csEvent) {
-				var eventFiredDate;
+        // Global event listener for PhotoshopJSONCallback event
+        this._csInterface.addEventListener(this.globalEventType, function(csEvent) {
+            var eventFiredDate;
 
-				// Avoid multiple event call stack error on Adobe Photoshop CC2014
-				if(self._hostVersion == 15) {
-					eventFiredDate = new Date(Date.now());
+            // Avoid multiple event call stack error on Adobe Photoshop CC2014
+            if(self._hostVersion == 15) {
+                eventFiredDate = new Date(Date.now());
 
-					if(self._now.toString() !== eventFiredDate.toString()) {
-						self._now = eventFiredDate;
-						self._callbackManager(csEvent);
-					}
-				} else {
-					self._callbackManager(csEvent);
-				}
-			});
-		}
-	};
+                if(self._now.toString() !== eventFiredDate.toString()) {
+                    self._now = eventFiredDate;
+                    self._callbackManager(csEvent);
+                }
+            } else {
+                self._callbackManager(csEvent);
+            }
+        });
+    };
 
 	// Public
 	PhotoshopDOMEvent.prototype.version = pkg.version;
